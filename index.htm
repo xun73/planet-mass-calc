@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title" data-i18n="pageTitle">🪐 天體軌道與質量分析實驗室</title>
+    <style>
+        :root {
+            --primary: #1976d2;
+            --primary-hover: #1565c0;
+            --bg-color: #f5f7fa;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #d1d5db;
+            --accent: #f57c00;
+            --danger: #ef4444;
+            --moon1: #d32f2f;
+            --moon2: #1976d2;
+            --moon3: #2e7d32;
+            --moon4: #7b1fa2;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 側邊欄 */
+        .sidebar {
+            width: 320px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+            transition: background-color 0.2s, border 0.2s;
+            flex-shrink: 0;
+        }
+
+        .sidebar.drag-over {
+            background-color: #e0f2fe;
+            border: 2px dashed var(--primary);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.2rem;
+            margin: 0 0 15px 0;
+            color: var(--primary);
+        }
+
+        .add-obs-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .add-obs-btn:hover { background-color: var(--primary-hover); }
+
+        .obs-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .obs-item {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: grab;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .obs-item:hover { border-color: var(--primary); }
+        .obs-item:active { cursor: grabbing; }
+        .obs-item.active {
+            border-color: var(--primary);
+            background-color: #e3f2fd;
+            border-left: 4px solid var(--primary);
+        }
+        .obs-item.drag-over-item {
+            border-top: 3px solid var(--primary);
+            margin-top: 15px;
+        }
+
+        .obs-item-title { font-weight: bold; margin-bottom: 5px; color: var(--text-color); width: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .obs-item-time { font-size: 0.85rem; color: #666; margin-bottom: 5px; }
+        .obs-item-stats { font-size: 0.8rem; color: #888; }
+        
+        .delete-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+
+        /* 主工作區 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* 頂部頁籤 */
+        .tabs {
+            display: flex;
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .view-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: auto;
+            position: relative;
+            background: var(--bg-color);
+        }
+        .view-container.active { display: flex; }
+
+        /* --- 視圖 1: 影像測量 --- */
+        .measure-toolbar {
+            padding: 12px 20px;
+            background: #ffffff;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .measure-toolbar input[type="text"] {
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .mode-btn {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .mode-btn:hover { background: #e5e7eb; }
+        .mode-btn.active { 
+            background: var(--primary); 
+            color: white; 
+            border-color: var(--primary);
+        }
+
+        .workspace {
+            flex: 1;
+            background-color: #ffffff;
+            overflow: hidden; 
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .zoom-tip {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(255,255,255,0.8);
+            padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; color: #666;
+            pointer-events: none; z-index: 20; border: 1px solid #ccc;
+        }
+
+        .canvas-container { 
+            position: absolute; 
+            transform-origin: 0 0; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+            border: 1px solid #eee; 
+            will-change: transform;
+        }
+        #target-image { display: block; max-width: none; pointer-events: none; user-select: none; }
+        #overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        .primary-outline { fill: rgba(0, 0, 0, 0.05); stroke: var(--accent); stroke-width: 2; }
+        .handle { fill: #fff; stroke: #000; stroke-width: 2; cursor: grab; }
+        .handle:active { cursor: grabbing; }
+        
+        .moon-marker { fill: var(--danger); stroke: #fff; stroke-width: 1.5; transition: r 0.1s; }
+        .moon-marker:hover { r: 6; stroke: #000; }
+        .moon-text { fill: #fff; font-family: sans-serif; font-size: 14px; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; pointer-events: none; font-weight: bold; }
+        
+        /* ★ 新增：可點擊刪除的衛星標記 */
+        .moon-marker.deletable { cursor: pointer; }
+        .moon-marker.deletable:hover { fill: #ff1744; r: 8; }
+        .moon-delete-hint {
+            fill: #ff1744; font-family: sans-serif; font-size: 11px; font-weight: bold;
+            pointer-events: none;
+        }
+
+        .cursor-crosshair { cursor: crosshair !important; }
+        .cursor-grab { cursor: grab !important; }
+        .cursor-grabbing { cursor: grabbing !important; }
+
+        /* --- 視圖 2: 軌道擬合與質量計算 --- */
+        .analysis-layout {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .analysis-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .graph-wrapper-outer {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .graph-scroll-container {
+            width: 100%;
+            height: 380px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            cursor: crosshair;
+            position: relative;
+        }
+        
+        .graph-scroll-container::-webkit-scrollbar { height: 12px; }
+        .graph-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 0 0 8px 8px; }
+        .graph-scroll-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 6px; }
+        .graph-scroll-container::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+        #graph-inner-wrapper {
+            position: relative;
+            height: 100%;
+            min-width: 100%;
+        }
+
+        #graph-svg { 
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%; 
+        }
+        
+        #flip-controls-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none; 
+        }
+
+        .graph-axis { stroke: #333; stroke-width: 1.5; }
+        .graph-grid { stroke: #e5e7eb; stroke-width: 1; stroke-dasharray: 4, 4; }
+        .graph-obs-line { stroke: rgba(25, 118, 210, 0.25); stroke-width: 1.5; stroke-dasharray: 4, 4; }
+        .graph-text { fill: #666; font-size: 12px; font-family: sans-serif; user-select: none; }
+        .data-point { fill: #ffffff; stroke: #111; stroke-width: 2; }
+        
+        .flip-btn-floating {
+            position: absolute;
+            top: 8px;
+            transform: translateX(-50%);
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 50%; 
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            pointer-events: auto; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            z-index: 10;
+            color: #555;
+        }
+        .flip-btn-floating:hover { 
+            border-color: var(--primary); 
+            background: #f0f9ff; 
+            transform: translateX(-50%) scale(1.1);
+        }
+        .flip-btn-floating.flipped { 
+            background: #fee2e2; 
+            border-color: var(--danger); 
+            color: var(--danger); 
+        }
+
+        /* 控制面板區 */
+        .curve-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            flex-shrink: 0;
+        }
+        .curve-panel {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            border-top: 5px solid;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            transition: opacity 0.2s;
+        }
+        .curve-panel h3 { margin: 0 0 10px 0; font-size: 1.05rem; display: flex; justify-content: space-between; align-items: center;}
+        .visibility-toggle { font-size: 0.85rem; font-weight: normal; color: #555; display: flex; align-items: center; gap: 4px; cursor: pointer;}
+        
+        .slider-group { margin-bottom: 12px; }
+        .slider-group label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: #444; font-weight: 500;}
+        .slider-group input[type="range"] { width: 100%; cursor: pointer; }
+
+        /* 計算結果區 */
+        .calc-section {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .calc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;}
+        .calc-header h2 { margin: 0; color: var(--primary); font-size: 1.4rem; }
+        
+        /* ★ 修改公式樣式，加入可點擊互動效果 */
+        .formula {
+            font-size: 1.1rem; font-family: 'Times New Roman', Times, serif; color: #555;
+            background: #f8fafc; padding: 8px 15px; border-radius: 6px; border: 1px solid #e2e8f0;
+            cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .formula:hover {
+            background: #e0f2fe; border-color: var(--primary);
+            color: var(--primary); transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .formula-tip {
+            display: inline-block; font-family: sans-serif; font-size: 0.75rem;
+            background: var(--accent); color: white; padding: 2px 8px;
+            border-radius: 10px; opacity: 0.7; margin-left: 8px;
+        }
+        
+        .planet-settings {
+            background: #eef2ff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #c7d2fe;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .planet-settings input { padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 120px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
+        th { background: #f1f5f9; color: #333; font-weight: bold; }
+        td input[type="checkbox"] { transform: scale(1.2); cursor: pointer; }
+
+        .result-box {
+            font-size: 1.2rem; font-weight: bold; color: #1565c0; text-align: center;
+            padding: 15px; background: #e3f2fd; border-radius: 8px; border: 1px solid #bbdefb;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+
+        /* 頻譜圖區 */
+        .spectrum-section {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 15px 20px;
+        }
+        .spectrum-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .spectrum-header h3 { margin: 0; font-size: 1rem; color: var(--text-color); }
+        .spectrum-hint { font-size: 0.82rem; color: #888; }
+        .spectrum-chart-wrapper {
+            width: 100%;
+            height: 240px;
+            position: relative;
+        }
+        #spectrum-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .empty-state {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: #888;
+        }
+
+        #toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #333; color: white; padding: 12px 24px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1000; opacity: 0;
+            transition: opacity 0.3s; pointer-events: none;
+        }
+
+        /* ★ 科學記號格式 */
+        .sci-notation { font-family: 'Times New Roman', serif; font-size: 1.05rem; }
+        .sci-notation sup { font-size: 0.7em; vertical-align: super; line-height: 0; }
+
+        /* ★ 衛星刪除按鈕區 */
+        .moon-list-panel {
+            padding: 8px 20px;
+            background: #fffbf0;
+            border-bottom: 1px solid #fde68a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            min-height: 44px;
+        }
+        .moon-list-panel .label { font-size: 0.85rem; color: #666; font-weight: 500; }
+        .moon-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #fff; border: 1px solid #fbbf24;
+            border-radius: 16px; padding: 3px 10px 3px 8px;
+            font-size: 0.82rem; color: #374151; font-weight: 500;
+        }
+        .moon-chip-del {
+            background: none; border: none; cursor: pointer;
+            color: var(--danger); font-size: 1rem; line-height: 1;
+            padding: 0 2px; font-weight: bold;
+        }
+        .moon-chip-del:hover { color: #b91c1c; }
+        .moon-empty-hint { font-size: 0.8rem; color: #aaa; font-style: italic; }
+
+        /* ★ 新增：推導過程 Modal 樣式 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+            backdrop-filter: blur(3px);
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 12px;
+            width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto;
+            position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            line-height: 1.7; color: #333;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-close {
+            position: absolute; top: 15px; right: 15px;
+            background: #f1f5f9; border: none; font-size: 1.2rem;
+            width: 32px; height: 32px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            color: #555; transition: all 0.2s;
+        }
+        .modal-close:hover { background: #fee2e2; color: #ef4444; transform: rotate(90deg); }
+        .math-block {
+            background: #f8fafc; padding: 15px; border-radius: 8px;
+            border-left: 4px solid var(--primary); margin: 15px 0;
+            font-family: 'Times New Roman', Times, serif; font-size: 1.2rem;
+            text-align: center; letter-spacing: 1px;
+        }
+        .modal-content h3 { color: var(--primary); margin-top: 20px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <h1 data-i18n="appTitle">🔭 天體觀測日誌</h1>
+                <button id="lang-toggle" onclick="toggleLanguage()" style="background:transparent; border:1px solid var(--border-color); color:var(--text-color); border-radius:6px; padding:2px 10px; font-size:0.8rem; cursor:pointer; white-space:nowrap;">English</button>
+            </div>
+            <input type="file" id="bulk-upload" accept="image/*" multiple style="display:none">
+            <button class="add-obs-btn" onclick="document.getElementById('bulk-upload').click()" data-i18n="addPhotos">+ 批次選擇 / 拖拉照片至此</button>
+        </div>
+        <div class="obs-list" id="obs-list"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('measure')" data-i18n="tabMeasure">1. 影像測量與標記</button>
+            <button class="tab-btn" onclick="switchTab('analysis')" data-i18n="tabAnalysis">2. 軌道擬合與質量計算</button>
+        </div>
+
+        <div class="view-container active" id="view-measure">
+            <div class="empty-state" id="measure-empty">
+                <h2 data-i18n="emptyState">請先在左側「新增照片」或直接將圖檔拖入左側清單中</h2>
+            </div>
+            
+            <div id="measure-ui" style="display: none; height: 100%; flex-direction: column;">
+                <div class="measure-toolbar">
+                    <label data-i18n="timeLabel">拍攝時間:</label>
+                    <input type="text" id="obsTimeStr" data-i18n-placeholder="timePlaceholder" data-i18n-title="timeTitle" placeholder="如: 202604011246" title="支援格式: YYYYMMDDHHmm 或標準日期格式" style="width: 140px;">
+                    
+                    <div style="width: 1px; height: 24px; background: #ccc; margin: 0 10px;"></div>
+                    
+                    <button class="mode-btn active" id="btn-mode-edit" onclick="setMeasureMode('edit')" data-i18n="btnEdit">調整主星遮罩</button>
+                    <button class="mode-btn" id="btn-mode-mark" onclick="setMeasureMode('mark')" data-i18n="btnMark">標記衛星 (最多4顆)</button>
+                    <button class="mode-btn" id="btn-auto-detect" onclick="autoDetectFeatures()" style="background-color: var(--accent); color: white; border: none; font-weight: bold;" data-i18n="btnAuto">✨ 自動辨識星體盤面</button>
+
+                    <span id="measure-stats" style="margin-left: auto; color: var(--primary); font-weight: bold; font-size: 0.9rem;"></span>
+                </div>
+
+                <div class="moon-list-panel" id="moon-list-panel">
+                    <span class="label" data-i18n="moonLabel">已標記衛星：</span>
+                    <span class="moon-empty-hint" id="moon-empty-hint" data-i18n="moonEmpty">尚無標記</span>
+                </div>
+
+                <div class="workspace" id="workspace">
+                    <div class="zoom-tip" data-i18n="zoomHint">💡 提示：滑鼠滾輪縮放照片｜按住右鍵平移｜雙擊空白處還原｜<b>標記模式下右鍵點衛星可刪除</b></div>
+                    <div class="canvas-container" id="canvas-container" style="display: none;">
+                        <img id="target-image" src="" alt="Target">
+                        <svg id="overlay-svg">
+                            <g id="dynamic-axis-group"></g>
+                            <g id="moons-group"></g>
+                            <g id="primary-group">
+                                <circle cx="0" cy="0" r="50" class="primary-outline" id="p-circle" />
+                                <g id="handles-group">
+                                    <circle cx="0" cy="0" r="6" class="handle" id="h-center" data-i18n-title="handleCenter" title="移動中心" />
+                                    <circle cx="35.35" cy="-35.35" r="5" class="handle" id="h-radius" data-i18n-title="handleRadius" title="調整半徑" />
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="view-container" id="view-analysis">
+            <div class="analysis-layout">
+                
+                <div class="analysis-header">
+                    <h2 style="margin: 0; color: var(--text-color); font-size: 1.3rem;" data-i18n="analysisTitle">軌道擬合與質量計算</h2>
+                    <button class="mode-btn" onclick="autoFitOrbitsBlind()" style="background-color: var(--accent); color: white; border: none; font-weight: bold; font-size: 1rem; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.15);" data-i18n="autoFit">
+                        ✨ 自動擬合 (Data-Driven)
+                    </button>
+                </div>
+                
+                <div class="graph-wrapper-outer">
+                    <div class="zoom-tip" style="top: 5px; right: 5px; z-index: 5;" data-i18n="zoomHint2">💡 備註：滑鼠滾輪縮放時間軸，拖動下方卷軸平移</div>
+                    
+                    <div class="graph-scroll-container" id="graph-scroll-container">
+                        <div id="graph-inner-wrapper">
+                            <svg id="graph-svg"></svg>
+                            <div id="flip-controls-overlay"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="curve-controls" id="curve-controls">
+                    </div>
+
+                <div class="spectrum-section">
+                    <div class="spectrum-header">
+                        <h3 data-i18n="spectrumTitle">頻譜分析</h3>
+                        <span class="spectrum-hint" data-i18n="spectrumHint">Lomb-Scargle 週期圖 — 峰值越高代表該週期之訊號越強，色塊標記為各衛星當前週期</span>
+                    </div>
+                    <div class="spectrum-chart-wrapper">
+                        <svg id="spectrum-svg"></svg>
+                    </div>
+                </div>
+
+                <div class="calc-section">
+                    <div class="calc-header">
+                        <h2 data-i18n="calcTitle">克卜勒第三定律計算結果</h2>
+                        <div class="formula" id="formula-btn" data-i18n="calcFormula" data-i18n-title="formulaTip" title="💡 點擊看推導">M = ( 4π² a³ ) / ( G T² )<span class="formula-tip" data-i18n="formulaTip">💡 點擊看推導</span></div>
+                    </div>
+                    
+                    <div class="planet-settings">
+                        <label style="font-weight:bold; color:#374151;" data-i18n="radiusLabel">主星半徑 (Rp) =</label>
+                        <input type="number" id="input-primary-radius" value="71492" onchange="updateCalcTable()">
+                        <span>km</span>
+                        <span style="font-size:0.85rem; color:#666; margin-left:10px;" data-i18n="radiusHint">(預設為木星 71492 km，可改為土星 58232 km 或其他天體)</span>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th width="10%" data-i18n="thAvg">是否參與平均</th>
+                                <th width="20%" data-i18n="thSat">衛星編號</th>
+                                <th width="20%" data-i18n="thA">軌道半徑 a </th>
+                                <th width="20%" data-i18n="thPeriod">週期 T (天)</th>
+                                <th width="30%" data-i18n="thMass">計算主星質量</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calc-tbody"></tbody>
+                    </table>
+
+                    <div class="result-box" id="final-mass-result" data-i18n="resultWait">
+                        主星質量平均值：等待計算...
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div class="modal-overlay" id="derivation-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeDerivationModal()">✕</button>
+            <h2 id="modal-title" style="color: var(--primary); margin-top: 0; text-align: center;" data-i18n="modalTitle">克卜勒第三定律公式推導</h2>
+            <p id="modal-p1" data-i18n="modalP1">這是一個結合了<strong>牛頓萬有引力定律</strong>與<strong>圓周運動</strong>的經典物理推導，讓我們能僅僅透過「看」衛星跑多快，就算出中心主星有多重。</p>
+            
+            <h3 id="modal-h1" data-i18n="modalH1">1. 變數設定</h3>
+            <ul style="line-height: 1.8;">
+                <li id="modal-liM" data-i18n="modalLiM"><strong>M</strong>：中心星體（主星）質量</li>
+                <li id="modal-lim" data-i18n="modalLim"><strong>m</strong>：環繞衛星質量</li>
+                <li id="modal-lia" data-i18n="modalLia"><strong>a</strong>：軌道半徑</li>
+                <li id="modal-liT" data-i18n="modalLiT"><strong>T</strong>：公轉週期</li>
+                <li id="modal-liv" data-i18n="modalLiv"><strong>v</strong>：軌道速度</li>
+                <li id="modal-liG" data-i18n="modalLiG"><strong>G</strong>：萬有引力常數</li>
+            </ul>
+
+            <h3 id="modal-h2" data-i18n="modalH2">2. 尋找向心力來源</h3>
+            <p id="modal-p2" data-i18n="modalP2">衛星之所以能穩定地做圓周運動，是因為主星對它的<strong>萬有引力 (F<sub>g</sub>)</strong> 剛好提供了它所需的<strong>向心力 (F<sub>c</sub>)</strong>。</p>
+            <div class="math-block">F<sub>g</sub> = F<sub>c</sub></div>
+            <div class="math-block">( G &middot; M &middot; m ) / a<sup>2</sup> = ( m &middot; v<sup>2</sup> ) / a</div>
+            <p id="modal-p3" data-i18n="modalP3">將等式兩邊的衛星質量 <strong>m</strong> 以及分母的一個 <strong>a</strong> 約掉，我們可以得到：</p>
+            <div class="math-block">G &middot; M / a = v<sup>2</sup> &nbsp;&nbsp;&nbsp;--- (式 1)</div>
+
+            <h3 id="modal-h3" data-i18n="modalH3">3. 代入運動週期</h3>
+            <p id="modal-p4" data-i18n="modalP4">在圓周運動中，速度 <strong>v</strong> 等於圓的周長除以週期：</p>
+            <div class="math-block">v = 2&pi;a / T</div>
+            <p id="modal-p5" data-i18n="modalP5">我們將這個 <strong>v</strong> 的表示式代回上面的 (式 1)：</p>
+            <div class="math-block">G &middot; M / a = ( 2&pi;a / T )<sup>2</sup></div>
+            <div class="math-block">G &middot; M / a = 4&pi;<sup>2</sup>a<sup>2</sup> / T<sup>2</sup></div>
+
+            <h3 id="modal-h4" data-i18n="modalH4">4. 整理得到最終公式</h3>
+            <p id="modal-p6" data-i18n="modalP6">為了求出主星質量 <strong>M</strong>，我們將等式左邊分母的 <strong>a</strong> 乘到右邊，再將常數 <strong>G</strong> 除過去：</p>
+            <div class="math-block" style="color: #d32f2f; font-weight: bold; font-size: 1.4rem;">
+                M = ( 4&pi;<sup>2</sup>a<sup>3</sup> ) / ( G &middot; T<sup>2</sup> )
+            </div>
+            <p id="modal-footer" style="text-align: center; color: #666; font-size: 0.9rem;" data-i18n="modalFooter">這也就是你正在使用的計算公式！</p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 狀態管理
+        // ==========================================
+        let observations = []; 
+        let currentObsId = null; 
+        let obsCounter = 1;
+
+        const curves = [
+            { id: 'c1', name: '衛星 1 (最外側)', color: 'var(--moon1)', A: 20, T: 15, phase: 0, visible: true, useForAvg: true, enabled: false },
+            { id: 'c2', name: '衛星 2', color: 'var(--moon2)', A: 15, T: 10, phase: 0, visible: true, useForAvg: true, enabled: false },
+            { id: 'c3', name: '衛星 3', color: 'var(--moon3)', A: 10, T: 5,  phase: 0, visible: true, useForAvg: true, enabled: false },
+            { id: 'c4', name: '衛星 4 (最內側)', color: 'var(--moon4)', A: 5,  T: 2,  phase: 0, visible: true, useForAvg: true, enabled: false }
+        ];
+
+        let measureMode = 'edit'; 
+        let draggingHandle = null;
+        let draggingMoonIndex = null; 
+        let draggedObsIndex = null;
+
+        const G_CONST = 6.674e-11;   
+        const DAY_SECONDS = 86400;   
+        const EARTH_MASS = 5.972e24; // kg，地球質量
+
+        // ==========================================
+        // 國際化 (i18n)
+        // ==========================================
+        let currentLang = (navigator.language || '').startsWith('zh') ? 'zh' : 'en';
+
+        const i18n = {
+            en: {
+                appTitle: '\uD83D\uDD2D Astronomy Observation Log',
+                addPhotos: '+ Batch Select / Drag Photos Here',
+                tabMeasure: '1. Image Measurement & Marking',
+                tabAnalysis: '2. Orbit Fitting & Mass Calculation',
+                emptyState: 'Please add photos from the sidebar or drag images into the list on the left',
+                timeLabel: 'Obs. Time:',
+                timePlaceholder: 'e.g. 202604011246',
+                timeTitle: 'Supports: YYYYMMDDHHmm or standard date format',
+                btnEdit: 'Adjust Mask',
+                btnMark: 'Mark Satellites (max 4)',
+                btnAuto: '\u2728 Auto-Detect Bodies',
+                autoBusy: '\u23F3 Detecting...',
+                moonLabel: 'Marked Satellites:',
+                moonEmpty: 'No marks yet',
+                zoomHint: '\uD83D\uDCA1 Scroll to zoom | Right-click drag to pan | Double-click to reset | \u003Cb\u003ERight-click satellite to delete\u003C/b\u003E',
+                zoomHint2: '\uD83D\uDCA1 Scroll to zoom timeline, drag scrollbar to pan',
+                analysisTitle: 'Orbit Fitting & Mass Calculation',
+                autoFit: '\u2728 Auto Fit (Data-Driven)',
+                spectrumTitle: 'Spectrum Analysis',
+                spectrumHint: 'Lomb-Scargle Periodogram \u2014 Higher peaks indicate stronger signals at those periods; colored markers show each satellite\u2019s current period',
+                calcTitle: 'Kepler\u2019s Third Law Results',
+                calcFormula: 'M = ( 4\u03C0\u00B2 a\u00B3 ) / ( G T\u00B2 )',
+                radiusLabel: 'Primary Radius (Rp) =',
+                radiusHint: '(Default: Jupiter 71492 km, change to Saturn 58232 km or other bodies)',
+                thAvg: 'Use in Avg',
+                thAvgTitle: 'Check to include in average',
+                thSat: 'Satellite',
+                thA: 'Orbit Radius a',
+                thPeriod: 'Period T (days)',
+                thMass: 'Calculated Mass',
+                resultWait: 'Average Mass: waiting for calculation...',
+                resultEnable: 'Please enable and check at least one orbit to calculate average.',
+                resultLabel: 'Average (checked orbits):',
+                resultBasedOn: 'based on Rp = {0} km',
+                deleteBtn: 'Delete',
+                noTime: 'Time not set',
+                noTimeSpan: '\u003Cspan style="color:#ef4444"\u003ETime not set\u003C/span\u003E',
+                flipText: '\u003Cspan style="color:var(--danger)"\u003E[\uD83D\uDD04 Flipped]\u003C/span\u003E',
+                moonCount: 'Marked {0} satellites',
+                moonChip: 'Sat {0} ({1} Rp)',
+                delMoonTitle: 'Delete this satellite mark',
+                toastMoonDeleted: 'Satellite {0} deleted',
+                toastMaxMoons: 'Maximum 4 satellites allowed! Click \u00D7 above to delete one.',
+                toastAutoSuccess: 'Auto-detection successful!',
+                toastAutoFail: 'Auto-detection failed. The image may have insufficient contrast.',
+                toastNoPhoto: 'Please upload a photo first!',
+                toastTooFewPoints: 'Too few data points. Please mark at least 3 photos with timestamps!',
+                toastAutoFitDone: '\u2728 Blind auto-fit complete! Orbits stripped from outer to inner.',
+                formatInvalid: 'Invalid format',
+                statsLabel: '1 Rp = {0}px | Marks: {1}',
+                graphNoData: 'No data available. Please set observation times and mark satellites.',
+                dayLabel: 'Day {0}',
+                spectrumNoData: 'Insufficient data to compute spectrum',
+                spectrumFail: 'Spectrum calculation failed',
+                specXLabel: 'Period (days)',
+                specYLabel: 'Power',
+                showLabel: 'Show',
+                sliderA: 'Amplitude a (Rp)',
+                sliderT: 'Period T (days)',
+                sliderP: 'Phase Shift (days)',
+                flipTitle: 'Click to flip data for: {0}',
+                massStr: '{0} kg\u003Cbr\u003E\u003Cspan style="font-size:0.82rem; color:#555;"\u003E\u2248 {1} Earth Masses\u003C/span\u003E',
+                earthMass: 'Earth Masses',
+                toggleLang: '\u4E2D\u6587',
+                pageTitle: '\uD83E\uDE90 Orbit \u0026 Mass Analysis Lab',
+                formulaTip: '\uD83D\uDCA1 Click to see derivation',
+                handleCenter: 'Move center',
+                handleRadius: 'Adjust radius',
+                curve1Name: 'Satellite 1 (Outermost)',
+                curve2Name: 'Satellite 2',
+                curve3Name: 'Satellite 3',
+                curve4Name: 'Satellite 4 (Innermost)',
+                modalTitle: 'Kepler\u2019s Third Law Derivation',
+                modalP1: 'This combines \u003Cstrong\u003ENewton\u2019s Law of Universal Gravitation\u003C/strong\u003E with \u003Cstrong\u003Ecircular motion\u003C/strong\u003E to determine the mass of the central body just by observing satellite orbits.',
+                modalH1: 'Variables',
+                modalLiM: '\u003Cstrong\u003EM\u003C/strong\u003E: Central body (primary) mass',
+                modalLim: '\u003Cstrong\u003Em\u003C/strong\u003E: Orbiting satellite mass',
+                modalLia: '\u003Cstrong\u003Ea\u003C/strong\u003E: Orbital radius',
+                modalLiT: '\u003Cstrong\u003ET\u003C/strong\u003E: Orbital period',
+                modalLiv: '\u003Cstrong\u003Ev\u003C/strong\u003E: Orbital velocity',
+                modalLiG: '\u003Cstrong\u003EG\u003C/strong\u003E: Gravitational constant',
+                modalH2: 'Find the Source of Centripetal Force',
+                modalP2: 'The satellite stays in circular motion because the primary\u2019s \u003Cstrong\u003Egravitational force (F\u003Csub\u003Eg\u003C/sub\u003E)\u003C/strong\u003E provides the required \u003Cstrong\u003Ecentripetal force (F\u003Csub\u003Ec\u003C/sub\u003E)\u003C/strong\u003E.',
+                modalP3: 'Cancel the satellite mass \u003Cstrong\u003Em\u003C/strong\u003E and one \u003Cstrong\u003Ea\u003C/strong\u003E from both sides:',
+                modalH3: 'Substitute Orbital Period',
+                modalP4: 'In circular motion, velocity \u003Cstrong\u003Ev\u003C/strong\u003E equals circumference divided by period:',
+                modalP5: 'Substitute \u003Cstrong\u003Ev\u003C/strong\u003E back into (Eq 1):',
+                modalH4: 'Derive the Final Formula',
+                modalP6: 'Multiply \u003Cstrong\u003Ea\u003C/strong\u003E to the right side, then divide by \u003Cstrong\u003EG\u003C/strong\u003E:',
+                modalFooter: 'This is the formula you are using!',
+            },
+            zh: {
+                appTitle: '\uD83D\uDD2D 天體觀測日誌',
+                addPhotos: '+ 批次選擇 / 拖拉照片至此',
+                tabMeasure: '1. 影像測量與標記',
+                tabAnalysis: '2. 軌道擬合與質量計算',
+                emptyState: '請先在左側「新增照片」或直接將圖檔拖入左側清單中',
+                timeLabel: '拍攝時間:',
+                timePlaceholder: '如: 202604011246',
+                timeTitle: '支援格式: YYYYMMDDHHmm 或標準日期格式',
+                btnEdit: '調整主星遮罩',
+                btnMark: '標記衛星 (最多4顆)',
+                btnAuto: '\u2728 自動辨識星體盤面',
+                autoBusy: '\u23F3 辨識中...',
+                moonLabel: '已標記衛星：',
+                moonEmpty: '尚無標記',
+                zoomHint: '\uD83D\uDCA1 提示：滑鼠滾輪縮放照片｜按住右鍵平移｜雙擊空白處還原｜\u003Cb\u003E標記模式下右鍵點衛星可刪除\u003C/b\u003E',
+                zoomHint2: '\uD83D\uDCA1 備註：滑鼠滾輪縮放時間軸，拖動下方卷軸平移',
+                analysisTitle: '軌道擬合與質量計算',
+                autoFit: '\u2728 自動擬合 (Data-Driven)',
+                spectrumTitle: '頻譜分析',
+                spectrumHint: 'Lomb-Scargle 週期圖 — 峰值越高代表該週期之訊號越強，色塊標記為各衛星當前週期',
+                calcTitle: '克卜勒第三定律計算結果',
+                calcFormula: 'M = ( 4\u03C0\u00B2 a\u00B3 ) / ( G T\u00B2 )',
+                radiusLabel: '主星半徑 (Rp) =',
+                radiusHint: '(預設為木星 71492 km，可改為土星 58232 km 或其他天體)',
+                thAvg: '是否參與平均',
+                thAvgTitle: '勾選參與平均',
+                thSat: '衛星編號',
+                thA: '軌道半徑 a',
+                thPeriod: '週期 T (天)',
+                thMass: '計算主星質量',
+                resultWait: '主星質量平均值：等待計算...',
+                resultEnable: '請啟用並勾選至少一條軌道以計算平均。',
+                resultLabel: '依勾選項目計算之平均質量：',
+                resultBasedOn: '(基於主星半徑 {0} km 計算)',
+                deleteBtn: '刪除',
+                noTime: '尚未設定時間',
+                noTimeSpan: '\u003Cspan style="color:#ef4444"\u003E尚未設定時間\u003C/span\u003E',
+                flipText: ' \u003Cspan style="color:var(--danger)"\u003E[\uD83D\uDD04已反轉]\u003C/span\u003E',
+                moonCount: '已標記 {0} 顆',
+                moonChip: '衛星 {0}（{1} Rp）',
+                delMoonTitle: '刪除此衛星標記',
+                toastMoonDeleted: '已刪除衛星 {0}',
+                toastMaxMoons: '最多只支援標記 4 顆衛星！若需修改請點上方 × 刪除。',
+                toastAutoSuccess: '自動辨識成功！',
+                toastAutoFail: '自動辨識失敗，影像對比可能不足。',
+                toastNoPhoto: '請先上傳照片！',
+                toastTooFewPoints: '數據點太少，請標記最少 3 張有時間的照片！',
+                toastAutoFitDone: '\u2728 全盲自動擬合完成！已從外側至內側依序剝離軌道。',
+                formatInvalid: '無效格式',
+                statsLabel: '1 Rp = {0}px | 標記數: {1}',
+                graphNoData: '無可用數據。請先設定照片時間並標記衛星。',
+                dayLabel: '第 {0} 天',
+                spectrumNoData: '數據不足，無法計算頻譜',
+                spectrumFail: '頻譜計算失敗',
+                specXLabel: '週期 (天)',
+                specYLabel: '功率',
+                showLabel: '顯示',
+                sliderA: '振幅 a (Rp)',
+                sliderT: '週期 T (天)',
+                sliderP: '相位平移 (天)',
+                flipTitle: '點擊反轉此日期的所有數據: {0}',
+                massStr: '{0} kg<br><span style="font-size:0.82rem; color:#555;">≈ {1} 地球質量</span>',
+                earthMass: '地球質量',
+                toggleLang: 'English',
+                pageTitle: '\uD83E\uDE90 天體軌道與質量分析實驗室',
+                formulaTip: '\uD83D\uDCA1 點擊看推導',
+                handleCenter: '移動中心',
+                handleRadius: '調整半徑',
+                curve1Name: '衛星 1 (最外側)',
+                curve2Name: '衛星 2',
+                curve3Name: '衛星 3',
+                curve4Name: '衛星 4 (最內側)',
+                modalTitle: '克卜勒第三定律公式推導',
+                modalP1: '這是一個結合了<strong>牛頓萬有引力定律</strong>與<strong>圓周運動</strong>的經典物理推導，讓我們能僅僅透過「看」衛星跑多快，就算出中心主星有多重。',
+                modalH1: '1. 變數設定',
+                modalLiM: '<strong>M</strong>：中心星體（主星）質量',
+                modalLim: '<strong>m</strong>：環繞衛星質量',
+                modalLia: '<strong>a</strong>：軌道半徑',
+                modalLiT: '<strong>T</strong>：公轉週期',
+                modalLiv: '<strong>v</strong>：軌道速度',
+                modalLiG: '<strong>G</strong>：萬有引力常數',
+                modalH2: '2. 尋找向心力來源',
+                modalP2: '衛星之所以能穩定地做圓周運動，是因為主星對它的<strong>萬有引力 (F<sub>g</sub>)</strong> 剛好提供了它所需的<strong>向心力 (F<sub>c</sub>)</strong>。',
+                modalP3: '將等式兩邊的衛星質量 <strong>m</strong> 以及分母的一個 <strong>a</strong> 約掉，我們可以得到：',
+                modalH3: '3. 代入運動週期',
+                modalP4: '在圓周運動中，速度 <strong>v</strong> 等於圓的周長除以週期：',
+                modalP5: '我們將這個 <strong>v</strong> 的表示式代回上面的 (式 1)：',
+                modalH4: '4. 整理得到最終公式',
+                modalP6: '為了求出主星質量 <strong>M</strong>，我們將等式左邊分母的 <strong>a</strong> 乘到右邊，再將常數 <strong>G</strong> 除過去：',
+                modalFooter: '這也就是你正在使用的計算公式！',
+            }
+        };
+
+        function __(key, ...args) {
+            const val = i18n[currentLang][key];
+            if (val === undefined) return key;
+            if (typeof val === 'function') return val(...args);
+            return val.replace(/\{(\d+)\}/g, (_, n) => args[parseInt(n)] !== undefined ? args[parseInt(n)] : `{${n}}`);
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            // Update static elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const val = i18n[currentLang][key];
+                if (val !== undefined) el.innerHTML = val;
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                const val = i18n[currentLang][key];
+                if (val !== undefined) el.placeholder = val;
+            });
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                const val = i18n[currentLang][key];
+                if (val !== undefined) el.title = val;
+            });
+            // Toggle button text
+            const toggleBtn = document.getElementById('lang-toggle');
+            if (toggleBtn) toggleBtn.textContent = __('toggleLang');
+            // Re-render dynamic content
+            updateCalcTable();
+            renderSidebar();
+            if (document.getElementById('view-analysis').classList.contains('active')) {
+                renderGraph();
+            }
+            if (currentObsId) {
+                updateMeasureSVG();
+                renderMoonChips(observations.find(o => o.id === currentObsId));
+            }
+            initCurveControls();
+            renderSpectrum();
+        }
+
+        let imgScale = 1;
+        let imgTx = 0;
+        let imgTy = 0;
+        let isPanningImage = false;
+        let startPanX = 0;
+        let startPanY = 0;
+
+        let chartZoom = 1;
+
+        // ==========================================
+        // ★ 新增：公式推導 Modal 邏輯
+        // ==========================================
+        const formulaBtn = document.getElementById('formula-btn');
+        const derivationModal = document.getElementById('derivation-modal');
+
+        formulaBtn.addEventListener('click', () => {
+            derivationModal.classList.add('active');
+        });
+
+        function closeDerivationModal() {
+            derivationModal.classList.remove('active');
+        }
+
+        // 點擊 Modal 半透明背景也可關閉
+        derivationModal.addEventListener('click', (e) => {
+            if (e.target === derivationModal) closeDerivationModal();
+        });
+
+
+        // ==========================================
+        // ★ 科學記號格式化：e+27 → 10²⁷ 上標格式
+        // ==========================================
+        function formatSciNotation(value) {
+            if (!isFinite(value) || isNaN(value)) return '---';
+            const exp = Math.floor(Math.log10(Math.abs(value)));
+            const mantissa = value / Math.pow(10, exp);
+            return `<span class="sci-notation">${mantissa.toFixed(3)} × 10<sup>${exp}</sup></span>`;
+        }
+
+        // ==========================================
+        // 工具函式
+        // ==========================================
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.view-container').forEach(view => view.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`view-${tabId}`).classList.add('active');
+
+            if (tabId === 'analysis') {
+                renderGraph();
+                updateCalcTable();
+            } else {
+                updateMeasureSVG(); 
+            }
+        }
+
+        function extractTimeFromFilename(filename) {
+            const regex = /(\d{4})(\d{2})(\d{2})_?(\d{2})(\d{2})/;
+            const match = filename.match(regex);
+            if (match) {
+                const y = parseInt(match[1]), m = parseInt(match[2]) - 1, d = parseInt(match[3]);
+                const h = parseInt(match[4]), min = parseInt(match[5]);
+                return new Date(y, m, d, h, min).getTime();
+            }
+            return null;
+        }
+
+        function formatTimeDisplay(ts) {
+            if (!ts) return __("noTime");
+            const d = new Date(ts);
+            const pad = n => n.toString().padStart(2, '0');
+            return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        async function processImageFiles(files) {
+            if (!files.length) return;
+            files.sort((a, b) => a.name.localeCompare(b.name));
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const dataUrl = await new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = ev => resolve(ev.target.result);
+                    reader.readAsDataURL(file);
+                });
+
+                const timestamp = extractTimeFromFilename(file.name);
+                let targetObs = {
+                    id: obsCounter++,
+                    title: file.name,
+                    timestamp: timestamp || null, 
+                    imgSrc: dataUrl,
+                    cx: 0, cy: 0, r: 50, 
+                    signFlipped: false, 
+                    moons: [] 
+                };
+                observations.push(targetObs);
+            }
+            selectObservation(observations[observations.length - 1].id);
+            renderSidebar();
+        }
+
+        const sidebarEl = document.getElementById('sidebar');
+        sidebarEl.addEventListener('dragover', e => { e.preventDefault(); sidebarEl.classList.add('drag-over'); });
+        sidebarEl.addEventListener('dragleave', () => sidebarEl.classList.remove('drag-over'));
+        sidebarEl.addEventListener('drop', e => {
+            e.preventDefault(); sidebarEl.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            processImageFiles(files);
+        });
+
+        document.getElementById('bulk-upload').addEventListener('change', e => {
+            processImageFiles(Array.from(e.target.files));
+            e.target.value = ''; 
+        });
+
+        document.getElementById('obsTimeStr').addEventListener('change', e => {
+            if (!currentObsId) return;
+            const obs = observations.find(o => o.id === currentObsId);
+            const str = e.target.value.trim();
+            
+            let parsedTime = null;
+            const regex12 = /^(\d{4})(\d{2})(\d{2})_?(\d{2})(\d{2})$/;
+            const match = str.match(regex12);
+            if (match) {
+                const y = parseInt(match[1]), m = parseInt(match[2]) - 1, d = parseInt(match[3]);
+                const h = parseInt(match[4]), min = parseInt(match[5]);
+                parsedTime = new Date(y, m, d, h, min).getTime();
+            } else {
+                const dDate = new Date(str);
+                if (!isNaN(dDate.getTime())) parsedTime = dDate.getTime();
+            }
+            obs.timestamp = parsedTime;
+            e.target.value = parsedTime ? formatTimeDisplay(parsedTime) : (str ? __("formatInvalid") : "");
+            
+            renderSidebar();
+            if(document.getElementById('view-analysis').classList.contains('active')) renderGraph();
+        });
+
+        function deleteObservation(id, event) {
+            event.stopPropagation();
+            observations = observations.filter(o => o.id !== id);
+            if (currentObsId === id) {
+                currentObsId = observations.length > 0 ? observations[0].id : null;
+                selectObservation(currentObsId);
+            }
+            renderSidebar();
+            if(document.getElementById('view-analysis').classList.contains('active')) renderGraph();
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('obs-list');
+            list.innerHTML = '';
+
+            observations.forEach((obs, index) => {
+                if (obs.title === '') obs.title = (currentLang === 'en' ? `Photo Record ${index + 1}` : `照片紀錄 ${index + 1}`);
+                
+                const div = document.createElement('div');
+                div.className = `obs-item ${obs.id === currentObsId ? 'active' : ''}`;
+                
+                div.draggable = true;
+                div.ondragstart = (e) => {
+                    draggedObsIndex = index;
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', index); 
+                };
+                div.ondragover = e => { e.preventDefault(); div.classList.add('drag-over-item'); };
+                div.ondragleave = () => div.classList.remove('drag-over-item');
+                div.ondrop = e => {
+                    e.preventDefault(); div.classList.remove('drag-over-item');
+                    if (draggedObsIndex === null || draggedObsIndex === index) return;
+                    const [removed] = observations.splice(draggedObsIndex, 1);
+                    observations.splice(index, 0, removed);
+                    draggedObsIndex = null;
+                    renderSidebar();
+                    if(document.getElementById('view-analysis').classList.contains('active')) renderGraph();
+                };
+
+                div.onclick = () => selectObservation(obs.id);
+                
+                const timeStr = obs.timestamp ? formatTimeDisplay(obs.timestamp) : __("noTimeSpan");
+                const flipText = obs.signFlipped ? __("flipText") : '';
+
+                div.innerHTML = `
+                    <button class="delete-btn" onclick="deleteObservation(${obs.id}, event)">${__("deleteBtn")}</button>
+                    <div class="obs-item-title" title="${obs.title}">${obs.title}</div>
+                    <div class="obs-item-time">${timeStr}</div>
+                    <div class="obs-item-stats">${__("moonCount", obs.moons.length)}${flipText}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function selectObservation(id) {
+            currentObsId = id;
+            renderSidebar();
+            
+            const emptyState = document.getElementById('measure-empty');
+            const measureUI = document.getElementById('measure-ui');
+            
+            if (!id) {
+                emptyState.style.display = 'block'; measureUI.style.display = 'none'; return;
+            }
+
+            emptyState.style.display = 'none'; measureUI.style.display = 'flex';
+
+            const obs = observations.find(o => o.id === id);
+            document.getElementById('obsTimeStr').value = obs.timestamp ? formatTimeDisplay(obs.timestamp) : "";
+
+            const imgEl = document.getElementById('target-image');
+            const canvasContainer = document.getElementById('canvas-container');
+            if (obs.imgSrc) {
+                imgEl.src = obs.imgSrc;
+                canvasContainer.style.display = 'block';
+                imgEl.onload = () => {
+                    setupWorkspace(imgEl.naturalWidth, imgEl.naturalHeight);
+                    if (obs.cx === 0 && obs.cy === 0) {
+                        obs.cx = imgEl.naturalWidth / 2;
+                        obs.cy = imgEl.naturalHeight / 2;
+                        obs.r = Math.min(imgEl.naturalWidth, imgEl.naturalHeight) * 0.05;
+                    }
+                    updateMeasureSVG();
+                };
+            } else {
+                imgEl.src = ""; canvasContainer.style.display = 'none';
+            }
+            setMeasureMode('edit');
+        }
+
+        function setupWorkspace(w, h) {
+            const canvasContainer = document.getElementById('canvas-container');
+            const svg = document.getElementById('overlay-svg');
+            canvasContainer.style.width = w + 'px';
+            canvasContainer.style.height = h + 'px';
+            svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            fitImageToWorkspace(w, h);
+        }
+
+        function setMeasureMode(mode) {
+            measureMode = mode;
+            document.getElementById('btn-mode-edit').classList.toggle('active', mode === 'edit');
+            document.getElementById('btn-mode-mark').classList.toggle('active', mode === 'mark');
+            
+            const handles = document.getElementById('handles-group');
+            const svg = document.getElementById('overlay-svg');
+            if (mode === 'edit') { handles.style.display = 'block'; svg.classList.remove('cursor-crosshair'); } 
+            else { handles.style.display = 'none'; svg.classList.add('cursor-crosshair'); }
+        }
+
+        const workspace = document.getElementById('workspace');
+        const canvasContainer = document.getElementById('canvas-container');
+        workspace.addEventListener('contextmenu', e => e.preventDefault());
+
+        function fitImageToWorkspace(w, h) {
+            const ws = document.getElementById('workspace');
+            const scaleX = (ws.clientWidth - 40) / w;
+            const scaleY = (ws.clientHeight - 40) / h;
+            imgScale = Math.min(1, scaleX, scaleY); 
+            imgTx = (ws.clientWidth - w * imgScale) / 2;
+            imgTy = (ws.clientHeight - h * imgScale) / 2;
+            applyImageTransform();
+        }
+
+        workspace.addEventListener('dblclick', () => {
+            if(!currentObsId) return;
+            const imgEl = document.getElementById('target-image');
+            fitImageToWorkspace(imgEl.naturalWidth, imgEl.naturalHeight);
+        });
+
+        function applyImageTransform() {
+            canvasContainer.style.transform = `translate(${imgTx}px, ${imgTy}px) scale(${imgScale})`;
+        }
+
+        workspace.addEventListener('mousedown', e => {
+            if (e.button === 2 && !e.target.classList.contains('moon-marker')) {
+                isPanningImage = true;
+                startPanX = e.clientX - imgTx;
+                startPanY = e.clientY - imgTy;
+                workspace.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (isPanningImage) {
+                imgTx = e.clientX - startPanX;
+                imgTy = e.clientY - startPanY;
+                applyImageTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (e.button === 2) {
+                isPanningImage = false;
+                workspace.style.cursor = '';
+            }
+        });
+
+        workspace.addEventListener('wheel', e => {
+            e.preventDefault();
+            const zoomSpeed = 0.15;
+            const delta = e.deltaY < 0 ? 1 : -1;
+            const prevScale = imgScale;
+            
+            imgScale += delta * zoomSpeed * imgScale; 
+            imgScale = Math.max(0.05, Math.min(imgScale, 30));
+
+            const rect = workspace.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            imgTx = mouseX - (mouseX - imgTx) * (imgScale / prevScale);
+            imgTy = mouseY - (mouseY - imgTy) * (imgScale / prevScale);
+            applyImageTransform();
+        }, { passive: false });
+
+        function getAxisAngle(obs) {
+            if (obs.moons.length === 0) return 0;
+            let maxD2 = -1; let furthest = null;
+            obs.moons.forEach(m => {
+                let d2 = Math.pow(m.x - obs.cx, 2) + Math.pow(m.y - obs.cy, 2);
+                if (d2 > maxD2) { maxD2 = d2; furthest = m; }
+            });
+            if (!furthest) return 0;
+            let angle = Math.atan2(furthest.y - obs.cy, furthest.x - obs.cx);
+            if (Math.abs(angle) > Math.PI / 2) angle += Math.PI; 
+            return angle;
+        }
+
+        function getMoonDistRp(obs, moon, axisAngle) {
+            const dx = moon.x - obs.cx;
+            const dy = moon.y - obs.cy;
+            const absoluteDistPx = Math.sqrt(dx*dx + dy*dy);
+            const distMagnitude = absoluteDistPx / obs.r;
+            const proj = dx * Math.cos(axisAngle) + dy * Math.sin(axisAngle);
+            const sign = proj >= 0 ? 1 : -1;
+            let distRp = distMagnitude * sign;
+            return obs.signFlipped ? -distRp : distRp;
+        }
+
+        // ★ 新增：渲染衛星標籤列（可刪除）
+        function renderMoonChips(obs) {
+            const panel = document.getElementById('moon-list-panel');
+            const hint = document.getElementById('moon-empty-hint');
+            
+            // 移除舊的 chips（保留 label 和 hint）
+            panel.querySelectorAll('.moon-chip').forEach(c => c.remove());
+
+            if (!obs || obs.moons.length === 0) {
+                hint.style.display = 'inline';
+            } else {
+                hint.style.display = 'none';
+                obs.moons.forEach((moon, index) => {
+                    const axisAngle = getAxisAngle(obs);
+                    const dist = getMoonDistRp(obs, moon, axisAngle);
+                    const chip = document.createElement('span');
+                    chip.className = 'moon-chip';
+                    chip.innerHTML = `
+                        ${__("moonChip", index + 1, (dist > 0 ? '+' : '') + dist.toFixed(1))}
+                        <button class="moon-chip-del" title="${__("delMoonTitle")}" onclick="deleteMoon(${index})">×</button>
+                    `;
+                    panel.appendChild(chip);
+                });
+            }
+        }
+
+        // ★ 新增：刪除指定衛星
+        function deleteMoon(index) {
+            if (!currentObsId) return;
+            const obs = observations.find(o => o.id === currentObsId);
+            if (!obs) return;
+            obs.moons.splice(index, 1);
+            updateMeasureSVG();
+            renderSidebar();
+            showToast(__(`toastMoonDeleted`, index + 1));
+        }
+
+        function updateMeasureSVG() {
+            if (!currentObsId) return;
+            const obs = observations.find(o => o.id === currentObsId);
+            
+            const primaryGroup = document.getElementById('primary-group');
+            const pCircle = document.getElementById('p-circle');
+            const hRadius = document.getElementById('h-radius');
+            
+            primaryGroup.setAttribute('transform', `translate(${obs.cx}, ${obs.cy})`);
+            pCircle.setAttribute('r', obs.r);
+            hRadius.setAttribute('cx', obs.r * 0.707);
+            hRadius.setAttribute('cy', -obs.r * 0.707);
+
+            document.getElementById('measure-stats').textContent = __("statsLabel", obs.r.toFixed(1), obs.moons.length);
+
+            const moonsGroup = document.getElementById('moons-group');
+            const axisGroup = document.getElementById('dynamic-axis-group');
+            moonsGroup.innerHTML = ''; axisGroup.innerHTML = '';
+
+            const axisAngle = getAxisAngle(obs);
+            const rLine = 2000;
+            const axisLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            axisLine.setAttribute('x1', obs.cx - rLine * Math.cos(axisAngle)); 
+            axisLine.setAttribute('y1', obs.cy - rLine * Math.sin(axisAngle));
+            axisLine.setAttribute('x2', obs.cx + rLine * Math.cos(axisAngle)); 
+            axisLine.setAttribute('y2', obs.cy + rLine * Math.sin(axisAngle));
+            axisLine.setAttribute('stroke', 'rgba(255, 255, 255, 0.3)');
+            axisLine.setAttribute('stroke-width', '2');
+            axisLine.setAttribute('stroke-dasharray', '8,4');
+            axisGroup.appendChild(axisLine);
+
+            obs.moons.forEach((moon, index) => {
+                moon.distRp = getMoonDistRp(obs, moon, axisAngle); 
+
+                const directLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                directLine.setAttribute('x1', obs.cx); 
+                directLine.setAttribute('y1', obs.cy);
+                directLine.setAttribute('x2', moon.x); 
+                directLine.setAttribute('y2', moon.y);
+                directLine.setAttribute('stroke', '#ef4444');
+                directLine.setAttribute('stroke-width', '1.5');
+                directLine.setAttribute('opacity', '0.6');
+                directLine.setAttribute('stroke-dasharray', '3,3');
+                moonsGroup.appendChild(directLine);
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', moon.x); circle.setAttribute('cy', moon.y);
+                circle.setAttribute('r', 5);
+                circle.setAttribute('class', 'moon-marker');
+                circle.setAttribute('data-index', index); 
+                
+                if (measureMode === 'mark') {
+                    circle.classList.add('cursor-grab');
+                    // ★ 右鍵刪除衛星
+                    circle.oncontextmenu = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        deleteMoon(index);
+                    };
+                }
+                moonsGroup.appendChild(circle);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', moon.x + 8); text.setAttribute('y', moon.y - 8);
+                text.setAttribute('class', 'moon-text');
+                text.textContent = `${moon.distRp > 0 ? '+' : ''}${moon.distRp.toFixed(1)} Rp`;
+                moonsGroup.appendChild(text);
+            });
+
+            // ★ 更新衛星標籤列
+            renderMoonChips(obs);
+        }
+
+        const overlaySvg = document.getElementById('overlay-svg');
+        function getSVGPoint(evt) {
+            const pt = overlaySvg.createSVGPoint();
+            pt.x = evt.clientX; pt.y = evt.clientY;
+            return pt.matrixTransform(overlaySvg.getScreenCTM().inverse());
+        }
+
+        overlaySvg.addEventListener('mousedown', e => {
+            if (!currentObsId || e.button !== 0) return; 
+            const obs = observations.find(o => o.id === currentObsId);
+
+            if (measureMode === 'edit') {
+                if (e.target.classList.contains('handle')) {
+                    draggingHandle = e.target.id;
+                    e.preventDefault();
+                }
+            } else if (measureMode === 'mark') {
+                if (e.target.classList.contains('moon-marker')) {
+                    draggingMoonIndex = parseInt(e.target.getAttribute('data-index'));
+                    e.target.classList.remove('cursor-grab');
+                    e.target.classList.add('cursor-grabbing');
+                    e.preventDefault();
+                } else {
+                    if (obs.moons.length >= 4) {
+                        showToast(__("toastMaxMoons")); return;
+                    }
+                    const pt = getSVGPoint(e);
+                    obs.moons.push({ x: pt.x, y: pt.y, distRp: 0 });
+                    updateMeasureSVG(); renderSidebar();
+                }
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!currentObsId) return;
+            const obs = observations.find(o => o.id === currentObsId);
+            
+            if (draggingHandle || draggingMoonIndex !== null) {
+                const pt = getSVGPoint(e);
+                if (measureMode === 'edit' && draggingHandle) {
+                    e.preventDefault();
+                    const dx = pt.x - obs.cx; const dy = pt.y - obs.cy;
+                    if (draggingHandle === 'h-center') { obs.cx = pt.x; obs.cy = pt.y; } 
+                    else if (draggingHandle === 'h-radius') { obs.r = Math.max(5, Math.sqrt(dx*dx + dy*dy)); }
+                    updateMeasureSVG();
+                } else if (measureMode === 'mark' && draggingMoonIndex !== null) {
+                    e.preventDefault();
+                    obs.moons[draggingMoonIndex].x = pt.x; obs.moons[draggingMoonIndex].y = pt.y;
+                    updateMeasureSVG();
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => { 
+            draggingHandle = null; draggingMoonIndex = null;
+            document.querySelectorAll('.moon-marker').forEach(el => {
+                el.classList.remove('cursor-grabbing');
+                if (measureMode === 'mark') el.classList.add('cursor-grab');
+            });
+        });
+
+        function autoDetectFeatures() {
+            if (!currentObsId) return;
+            const obs = observations.find(o => o.id === currentObsId);
+            if (!obs || !obs.imgSrc) { showToast(__("toastNoPhoto")); return; }
+
+            const btn = document.getElementById('btn-auto-detect');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = __("autoBusy"); btn.disabled = true;
+
+            setTimeout(() => {
+                try {
+                    const img = document.getElementById('target-image');
+                    const MAX_DIM = 800; let scale = 1; let w = img.naturalWidth; let h = img.naturalHeight;
+
+                    if (w > MAX_DIM || h > MAX_DIM) {
+                        scale = Math.min(MAX_DIM/w, MAX_DIM/h); w = Math.floor(w*scale); h = Math.floor(h*scale);
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const data = ctx.getImageData(0, 0, w, h).data;
+
+                    let maxLuma = 0;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const luma = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                        if (luma > maxLuma) maxLuma = luma;
+                    }
+                    
+                    const threshold = Math.max(50, maxLuma * 0.4);
+                    const binary = new Uint8Array(w * h);
+                    for (let i = 0; i < data.length; i += 4) {
+                        const luma = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                        if (luma > threshold) binary[i/4] = 1; 
+                    }
+
+                    const blobs = []; const visited = new Uint8Array(w * h);
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            if (binary[idx] && !visited[idx]) {
+                                const queue = [idx]; visited[idx] = 1;
+                                let sumX = 0, sumY = 0, count = 0;
+                                let minX = x, maxX = x, minY = y, maxY = y;
+                                let head = 0;
+
+                                while (head < queue.length) {
+                                    const curr = queue[head++];
+                                    const cx = curr % w; const cy = Math.floor(curr / w);
+                                    sumX += cx; sumY += cy; count++;
+                                    if (cx < minX) minX = cx; if (cx > maxX) maxX = cx;
+                                    if (cy < minY) minY = cy; if (cy > maxY) maxY = cy;
+
+                                    [curr - 1, curr + 1, curr - w, curr + w].forEach(n => {
+                                        if (n >= 0 && n < w*h && binary[n] && !visited[n]) {
+                                            if ((curr % w === 0 && n === curr - 1) || (curr % w === w - 1 && n === curr + 1)) return;
+                                            visited[n] = 1; queue.push(n);
+                                        }
+                                    });
+                                }
+                                if (count >= 2) blobs.push({ x: sumX/count, y: sumY/count, w: maxX-minX, h: maxY-minY, area: count });
+                            }
+                        }
+                    }
+
+                    blobs.sort((a, b) => b.area - a.area);
+                    if (blobs.length === 0) throw new Error("No bright objects found");
+
+                    const primary = blobs[0];
+                    obs.cx = primary.x / scale; obs.cy = primary.y / scale;
+                    obs.r = ((primary.w + primary.h) / 4) / scale * 1.1; 
+                    
+                    let candidates = blobs.slice(1).filter(b => b.area < primary.area * 0.2);
+
+                    if (candidates.length > 0) {
+                        let maxDist = 0, furthest = null;
+                        candidates.forEach(m => {
+                            const d2 = Math.pow(m.x - primary.x, 2) + Math.pow(m.y - primary.y, 2);
+                            if (d2 > maxDist) { maxDist = d2; furthest = m; }
+                        });
+
+                        if (furthest) {
+                            const hiddenAngle = Math.atan2(furthest.y - primary.y, furthest.x - primary.x);
+                            const sinA = Math.sin(hiddenAngle); const cosA = Math.cos(hiddenAngle);
+                            const tolerance = Math.max(primary.w, primary.h) * 1.5; 
+                            
+                            candidates = candidates.filter(m => {
+                                const distToLine = Math.abs(sinA * m.x - cosA * m.y + cosA * primary.y - sinA * primary.x);
+                                return distToLine < tolerance;
+                            });
+                        }
+                    }
+
+                    obs.moons = candidates.slice(0, 4).map(m => ({ x: m.x / scale, y: m.y / scale, distRp: 0 }));
+                    updateMeasureSVG(); renderSidebar(); showToast(__("toastAutoSuccess"));
+                } catch (e) {
+                    showToast(__("toastAutoFail"));
+                } finally {
+                    btn.innerHTML = originalText; btn.disabled = false;
+                }
+            }, 50);
+        }
+
+        // ==========================================
+        // 視圖 2: 軌道擬合與質量計算
+        // ==========================================
+        
+        // 對給定週期 T，以最小平方法解最佳振幅 A 與相位 phase
+        function sineFitAnalytical(points, T) {
+            const omega = 2 * Math.PI / T;
+            let sum_sin2 = 0, sum_cos2 = 0, sum_r_sin = 0, sum_r_cos = 0;
+            for (const p of points) {
+                const s = Math.sin(omega * p.t);
+                const c = Math.cos(omega * p.t);
+                sum_sin2 += s * s;
+                sum_cos2 += c * c;
+                sum_r_sin += p.r * s;
+                sum_r_cos += p.r * c;
+            }
+            const alpha = sum_r_sin / (sum_sin2 || 1e-10);
+            const beta  = sum_r_cos / (sum_cos2 || 1e-10);
+            const A = Math.sqrt(alpha * alpha + beta * beta);
+            const phase = Math.atan2(-beta, alpha) / (omega || 1);
+            return { A, phase };
+        }
+
+        // R² 評分（越高越好）
+        function scoreSineFit(points, A, T, phase) {
+            const omega = 2 * Math.PI / T;
+            const meanR = points.reduce((s, p) => s + p.r, 0) / points.length;
+            let ss_res = 0, ss_tot = 0;
+            for (const p of points) {
+                const pred = A * Math.sin(omega * (p.t - phase));
+                ss_res += (p.r - pred) ** 2;
+                ss_tot += (p.r - meanR) ** 2;
+            }
+            return ss_tot > 0 ? 1 - ss_res / ss_tot : 0;
+        }
+
+        // 從頻譜中取出前 N 個候選週期（依功率排序），回傳依週期大到小排列
+        function findCandidatePeriods(points) {
+            const spectrum = computePeriodogram(points);
+            if (spectrum.length < 3) return [];
+            const peaks = [];
+            for (let i = 1; i < spectrum.length - 1; i++) {
+                if (spectrum[i].power > spectrum[i - 1].power &&
+                    spectrum[i].power > spectrum[i + 1].power &&
+                    spectrum[i].power > 0.15) {
+                    peaks.push({ period: spectrum[i].period, power: spectrum[i].power });
+                }
+            }
+            peaks.sort((a, b) => b.power - a.power);
+            const top = peaks.slice(0, 8);
+            top.sort((a, b) => b.period - a.period);
+            return top.map(p => p.period);
+        }
+
+        // 自動擬合：原始暴力三維網格搜尋 + 由外而內逐顆剝離
+        function autoFitOrbitsBlind() {
+            const validObs = observations.filter(o => o.timestamp !== null && o.moons.length > 0);
+            if (validObs.length < 3) {
+                showToast(__("toastTooFewPoints")); return;
+            }
+
+            const sortedObs = [...validObs].sort((a, b) => a.timestamp - b.timestamp);
+            const baseTime = sortedObs[0].timestamp;
+            const availablePoints = [];
+            sortedObs.forEach(obs => {
+                const tDays = (obs.timestamp - baseTime) / (1000 * 60 * 60 * 24);
+                const axisAngle = getAxisAngle(obs);
+                obs.moons.forEach(m => {
+                    const rValue = getMoonDistRp(obs, m, axisAngle);
+                    availablePoints.push({ t: tDays, r: rValue });
+                });
+            });
+
+            const tMaxSpan = Math.max(...availablePoints.map(p => p.t));
+            const maxPeriodToTest = Math.max(30, tMaxSpan * 1.5);
+            let remaining = [...availablePoints];
+            let claimedSets = [[], [], [], []];
+
+            for (let m = 0; m < 4; m++) {
+                if (remaining.length === 0) { curves[m].enabled = false; continue; }
+
+                let curMaxR = 0;
+                remaining.forEach(p => { if(Math.abs(p.r) > curMaxR) curMaxR = Math.abs(p.r); });
+                if (curMaxR < 0.1) curMaxR = 1.0;
+
+                let bestScore = -1;
+                let bestA = curMaxR, bestT = 1, bestP = 0;
+
+                const aStepC = Math.max(0.2, curMaxR * 0.05);
+                for (let testA = curMaxR * 0.6; testA <= curMaxR * 1.2; testA += aStepC) {
+                    for (let testT = 0.5; testT <= maxPeriodToTest; testT += 0.2) {
+                        const pStepC = testT / 10;
+                        for (let testP = -testT/2; testP < testT/2; testP += pStepC) {
+                            let s = evaluateCurveBlind(remaining, testA, testT, testP);
+                            if (s > bestScore) { bestScore = s; bestA = testA; bestT = testT; bestP = testP; }
+                        }
+                    }
+                }
+
+                let fineScore = bestScore;
+                const aStepF = aStepC / 5;
+                const tStepF = 0.05;
+                const pStepF = bestT / 50;
+                for (let testA = bestA - aStepC; testA <= bestA + aStepC; testA += aStepF) {
+                    for (let testT = bestT - 0.2; testT <= bestT + 0.2; testT += tStepF) {
+                        for (let testP = bestP - bestT/10; testP <= bestP + bestT/10; testP += pStepF) {
+                            let s = evaluateCurveBlind(remaining, testA, testT, testP);
+                            if (s > fineScore) { fineScore = s; bestA = testA; bestT = testT; bestP = testP; }
+                        }
+                    }
+                }
+
+                curves[m].A = bestA;
+                curves[m].T = bestT;
+                curves[m].phase = bestP;
+                curves[m].enabled = true;
+                curves[m].visible = true;
+
+                const result = removeClaimedPoints(remaining, bestA, bestT, bestP);
+                remaining = result.remaining;
+                claimedSets[m] = result.claimed;
+            }
+
+            // ★ 強制分配：確保每張照片的每個資料點都歸屬於某顆衛星
+            for (const pt of remaining) {
+                let bestDist = Infinity;
+                let bestM = 0;
+                for (let m = 0; m < 4; m++) {
+                    if (!curves[m].enabled) continue;
+                    const pred = curves[m].A * Math.sin((2 * Math.PI / curves[m].T) * (pt.t - curves[m].phase));
+                    const dist = Math.abs(pt.r - pred);
+                    if (dist < bestDist) { bestDist = dist; bestM = m; }
+                }
+                claimedSets[bestM].push(pt);
+            }
+
+            // 精煉：各衛星只用自己認領的點重新擬合
+            for (let m = 0; m < 4; m++) {
+                if (!curves[m].enabled || claimedSets[m].length < 3) continue;
+                const own = claimedSets[m];
+                let bestS = evaluateCurveBlind(own, curves[m].A, curves[m].T, curves[m].phase);
+                for (let scale = 0.92; scale <= 1.08; scale += 0.005) {
+                    const testT = curves[m].T * scale;
+                    for (let testA = curves[m].A * 0.85; testA <= curves[m].A * 1.15; testA += curves[m].A * 0.02) {
+                        const s = evaluateCurveBlind(own, testA, testT, curves[m].phase);
+                        if (s > bestS) { bestS = s; curves[m].A = testA; curves[m].T = testT; }
+                    }
+                }
+            }
+
+            initCurveControls();
+            drawGraphCurves();
+            updateCalcTable();
+            renderSpectrum();
+            showToast(__("toastAutoFitDone"));
+        }
+
+        function evaluateCurveBlind(pts, A, T, P) {
+            let score = 0;
+            let times = [...new Set(pts.map(p => p.t))];
+            let sigma = Math.max(0.3, A * 0.1);
+            for (let t of times) {
+                let ptsAtTime = pts.filter(p => p.t === t);
+                let yCurve = A * Math.sin((2 * Math.PI / T) * (t - P));
+                let minDiff = Infinity;
+                for (let p of ptsAtTime) {
+                    let diff = Math.abs(p.r - yCurve);
+                    if (diff < minDiff) minDiff = diff;
+                }
+                score += Math.exp(-(minDiff * minDiff) / (2 * sigma * sigma));
+            }
+            return score;
+        }
+
+        function removeClaimedPoints(pts, A, T, P) {
+            let remaining = [];
+            let claimed = [];
+            let times = [...new Set(pts.map(p => p.t))];
+            let claimTolerance = Math.max(0.5, A * 0.15);
+            for (let t of times) {
+                let ptsAtTime = pts.filter(p => p.t === t);
+                let yCurve = A * Math.sin((2 * Math.PI / T) * (t - P));
+                let closestPt = null;
+                let minDiff = Infinity;
+                for (let p of ptsAtTime) {
+                    let diff = Math.abs(p.r - yCurve);
+                    if (diff < minDiff) { minDiff = diff; closestPt = p; }
+                }
+                for (let p of ptsAtTime) {
+                    if (p === closestPt && minDiff < claimTolerance) {
+                        claimed.push(p);
+                    } else {
+                        remaining.push(p);
+                    }
+                }
+            }
+            return { remaining, claimed };
+        }
+
+        function toggleSignFlipFromChart(obsId, isChecked) {
+            const obs = observations.find(o => o.id === obsId);
+            if (obs) {
+                obs.signFlipped = isChecked;
+                renderGraph(); renderSidebar();
+            }
+        }
+
+        const graphScrollContainer = document.getElementById('graph-scroll-container');
+        graphScrollContainer.addEventListener('wheel', e => {
+            e.preventDefault(); 
+            const prevZoom = chartZoom;
+            if (e.deltaY < 0) chartZoom *= 1.15; 
+            else chartZoom /= 1.15; 
+            chartZoom = Math.max(1, Math.min(chartZoom, 15)); 
+
+            const rect = graphScrollContainer.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const scrollPos = graphScrollContainer.scrollLeft;
+            const focusX = scrollPos + mouseX;
+
+            const ratio = chartZoom / prevZoom;
+            const newFocusX = focusX * ratio;
+
+            renderGraph(); 
+            graphScrollContainer.scrollLeft = newFocusX - mouseX; 
+        }, { passive: false });
+
+        function toggleCurveVisibility(index, isVisible) { curves[index].visible = isVisible; drawGraphCurves(); }
+        function toggleCalcAvg(index, isChecked) { curves[index].useForAvg = isChecked; updateCalcTable(); }
+        function toggleCurveEnable(index, isChecked) {
+            curves[index].enabled = isChecked;
+            initCurveControls(); drawGraphCurves(); updateCalcTable(); renderSpectrum();
+        }
+
+        function initCurveControls() {
+            const container = document.getElementById('curve-controls');
+            container.innerHTML = '';
+            
+            curves.forEach((curve, index) => {
+                const isEnabled = curve.enabled !== false;
+                const panel = document.createElement('div');
+                panel.className = 'curve-panel';
+                panel.style.borderTopColor = isEnabled ? curve.color : '#ccc';
+                panel.style.opacity = isEnabled ? '1' : '0.6';
+                
+                const maxA = Math.max(30, Math.ceil(curve.A * 1.5));
+                const maxT = Math.max(20, Math.ceil(curve.T * 1.5));
+
+                const names = [__("curve1Name"), __("curve2Name"), __("curve3Name"), __("curve4Name")];
+                panel.innerHTML = `
+                    <h3>
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                            <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleCurveEnable(${index}, this.checked)">
+                            <span style="color:${isEnabled ? curve.color : '#999'}">${names[index]}</span>
+                        </label>
+                        ${isEnabled ? `
+                        <label class="visibility-toggle">
+                            <input type="checkbox" ${curve.visible ? 'checked' : ''} onchange="toggleCurveVisibility(${index}, this.checked)"> ${__("showLabel")}
+                        </label>` : ''}
+                    </h3>
+                    <div style="opacity: ${isEnabled ? '1' : '0.3'}; pointer-events: ${isEnabled ? 'auto' : 'none'};">
+                        <div class="slider-group">
+                            <label>${__("sliderA")} <span><span id="val-A-${index}">${curve.A.toFixed(2)}</span></span></label>
+                            <input type="range" id="slider-A-${index}" min="0" max="${maxA}" step="0.01" value="${curve.A}">
+                        </div>
+                        <div class="slider-group">
+                            <label>${__("sliderT")} <span><span id="val-T-${index}">${curve.T.toFixed(2)}</span></span></label>
+                            <input type="range" id="slider-T-${index}" min="0.1" max="${maxT}" step="0.01" value="${curve.T}">
+                        </div>
+                        <div class="slider-group">
+                            <label>${__("sliderP")} <span><span id="val-P-${index}">${curve.phase.toFixed(2)}</span></span></label>
+                            <input type="range" id="slider-P-${index}" min="${-maxT}" max="${maxT}" step="0.01" value="${curve.phase}">
+                        </div>
+                    </div>
+                `;
+                container.appendChild(panel);
+
+                if (isEnabled) {
+                    ['A', 'T', 'P'].forEach(param => {
+                        document.getElementById(`slider-${param}-${index}`).addEventListener('input', (e) => {
+                            const val = parseFloat(e.target.value);
+                            if (param === 'A') curve.A = val; if (param === 'T') curve.T = val; if (param === 'P') curve.phase = val;
+                            document.getElementById(`val-${param}-${index}`).textContent = val.toFixed(2);
+                            drawGraphCurves(); updateCalcTable(); renderSpectrum(); 
+                        });
+                    });
+                }
+            });
+        }
+        initCurveControls();
+
+        let graphParams = { width: 800, baseWidth: 800, height: 380, padX: 60, padY: 45, tMin: 0, tMax: 10, yMax: 30 };
+
+        function renderGraph() {
+            const svg = document.getElementById('graph-svg');
+            const wrapper = document.getElementById('graph-scroll-container');
+            const innerWrapper = document.getElementById('graph-inner-wrapper');
+            const overlay = document.getElementById('flip-controls-overlay');
+            
+            graphParams.baseWidth = wrapper.clientWidth;
+            graphParams.width = Math.max(graphParams.baseWidth, graphParams.baseWidth * chartZoom);
+            innerWrapper.style.width = graphParams.width + 'px';
+            graphParams.height = wrapper.clientHeight;
+            
+            const validObs = observations.filter(o => o.timestamp !== null && o.moons.length > 0);
+            if (validObs.length === 0) {
+                svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#888">${__("graphNoData")}</text>`;
+                overlay.innerHTML = ''; renderSpectrum(); return;
+            }
+
+            const sortedObs = [...validObs].sort((a, b) => a.timestamp - b.timestamp);
+            const baseTime = sortedObs[0].timestamp;
+            let maxT = 0; let maxDist = 10;
+            
+            const points = [];
+            sortedObs.forEach(obs => {
+                const tDays = (obs.timestamp - baseTime) / (1000 * 60 * 60 * 24);
+                if (tDays > maxT) maxT = tDays;
+                
+                const axisAngle = getAxisAngle(obs);
+                obs.moons.forEach(m => {
+                    const rValue = getMoonDistRp(obs, m, axisAngle);
+                    points.push({ t: tDays, r: rValue });
+                    if (Math.abs(rValue) > maxDist) maxDist = Math.abs(rValue);
+                });
+            });
+
+            graphParams.tMin = -0.5; 
+            graphParams.tMax = maxT < 4 ? 4 : maxT + 1; 
+            graphParams.yMax = Math.ceil(maxDist * 1.2 / 5) * 5;
+
+            drawGraphAxesAndPoints(points, sortedObs, baseTime);
+            drawGraphCurves();
+            renderFloatingFlipButtons(sortedObs, baseTime);
+            renderSpectrum();
+        }
+
+        function mapX(t) { return graphParams.padX + ((t - graphParams.tMin) / (graphParams.tMax - graphParams.tMin)) * (graphParams.width - graphParams.padX * 2); }
+        function mapY(r) { return graphParams.height/2 - (r / graphParams.yMax) * (graphParams.height/2 - graphParams.padY); }
+
+        function drawGraphAxesAndPoints(points, sortedObs, baseTime) {
+            const svg = document.getElementById('graph-svg');
+            svg.innerHTML = ''; 
+
+            const y0 = mapY(0);
+            svg.innerHTML += `<line x1="${graphParams.padX}" y1="${y0}" x2="${graphParams.width - graphParams.padX}" y2="${y0}" class="graph-axis" />`;
+            const x0 = mapX(0);
+            svg.innerHTML += `<line x1="${x0}" y1="${graphParams.padY}" x2="${x0}" y2="${graphParams.height - graphParams.padY}" class="graph-axis" />`;
+
+            sortedObs.forEach(obs => {
+                const tDays = (obs.timestamp - baseTime) / (1000 * 60 * 60 * 24);
+                const xx = mapX(tDays);
+                svg.innerHTML += `<line x1="${xx}" y1="${38}" x2="${xx}" y2="${graphParams.height - graphParams.padY}" class="graph-obs-line" />`;
+            });
+
+            const yStep = Math.max(5, Math.ceil(graphParams.yMax / 4));
+            for (let val = -graphParams.yMax; val <= graphParams.yMax; val += yStep) {
+                if(val === 0) continue;
+                const yy = mapY(val);
+                svg.innerHTML += `<line x1="${graphParams.padX}" y1="${yy}" x2="${graphParams.width - graphParams.padX}" y2="${yy}" class="graph-grid" />`;
+                svg.innerHTML += `<text x="${graphParams.padX - 10}" y="${yy+4}" text-anchor="end" class="graph-text">${val} Rp</text>`;
+            }
+
+            const daysStep = (graphParams.tMax / chartZoom) > 15 ? 2 : ((graphParams.tMax / chartZoom) < 3 ? 0.5 : 1);
+            for(let d = 0; d <= graphParams.tMax; d += daysStep) {
+                const xx = mapX(d);
+                svg.innerHTML += `<line x1="${xx}" y1="${graphParams.padY}" x2="${xx}" y2="${graphParams.height - graphParams.padY}" class="graph-grid" />`;
+                svg.innerHTML += `<text x="${xx}" y="${graphParams.height - 20}" text-anchor="middle" class="graph-text">${__("dayLabel", d)}</text>`;
+            }
+
+            svg.innerHTML += `<g id="curves-layer"></g>`;
+
+            points.forEach(p => {
+                svg.innerHTML += `<circle cx="${mapX(p.t)}" cy="${mapY(p.r)}" r="4" class="data-point" />`;
+            });
+        }
+
+        function drawGraphCurves() {
+            const layer = document.getElementById('curves-layer');
+            if (!layer) return;
+            layer.innerHTML = '';
+
+            const steps = Math.floor(150 * chartZoom); 
+            
+            curves.forEach(curve => {
+                if (!curve.enabled || !curve.visible) return; 
+                let d = "";
+                for(let i=0; i<=steps; i++) {
+                    const t = graphParams.tMin + (i/steps) * (graphParams.tMax - graphParams.tMin);
+                    const val = curve.A * Math.sin( (2 * Math.PI / curve.T) * (t - curve.phase) );
+                    const xPx = mapX(t); const yPx = mapY(val);
+                    if (i === 0) d += `M ${xPx} ${yPx} `; else d += `L ${xPx} ${yPx} `;
+                }
+                layer.innerHTML += `<path d="${d}" fill="none" stroke="${curve.color}" stroke-width="2.5" opacity="0.8" />`;
+            });
+        }
+
+        function renderFloatingFlipButtons(sortedObs, baseTime) {
+            const overlay = document.getElementById('flip-controls-overlay');
+            overlay.innerHTML = '';
+            
+            sortedObs.forEach(obs => {
+                const tDays = (obs.timestamp - baseTime) / (1000 * 60 * 60 * 24);
+                const xPx = mapX(tDays);
+                
+                const btn = document.createElement('div');
+                btn.className = `flip-btn-floating ${obs.signFlipped ? 'flipped' : ''}`;
+                btn.style.left = `${xPx}px`;
+                btn.innerHTML = '🔄'; 
+                btn.title = __("flipTitle", obs.title);
+                btn.onclick = () => toggleSignFlipFromChart(obs.id, !obs.signFlipped);
+                
+                overlay.appendChild(btn);
+            });
+        }
+
+        // ==========================================
+        // 頻譜分析：Lomb-Scargle 週期圖
+        // ==========================================
+        function computePeriodogram(points) {
+            const tValues = points.map(p => p.t);
+            const rValues = points.map(p => p.r);
+            const tMin = Math.min(...tValues);
+            const tMax = Math.max(...tValues);
+            const span = tMax - tMin;
+            if (span < 0.1 || points.length < 3) return [];
+
+            const minPeriod = Math.max(0.01, span / 500);
+            const maxPeriod = Math.max(span * 1.2, 2);
+            const nSteps = 200;
+            const result = [];
+
+            for (let i = 0; i <= nSteps; i++) {
+                const period = minPeriod + (maxPeriod - minPeriod) * i / nSteps;
+                const omega = 2 * Math.PI / period;
+                let sum_sin2 = 0, sum_cos2 = 0, sum_y_sin = 0, sum_y_cos = 0;
+                for (let j = 0; j < points.length; j++) {
+                    const arg = omega * (tValues[j] - tMin);
+                    const s = Math.sin(arg);
+                    const c = Math.cos(arg);
+                    sum_sin2 += s * s;
+                    sum_cos2 += c * c;
+                    sum_y_sin += rValues[j] * s;
+                    sum_y_cos += rValues[j] * c;
+                }
+                const power = (sum_y_sin * sum_y_sin / (sum_sin2 || 1)) + (sum_y_cos * sum_y_cos / (sum_cos2 || 1));
+                result.push({ period, power });
+            }
+            const maxPower = Math.max(...result.map(r => r.power));
+            if (maxPower > 0) result.forEach(r => r.power /= maxPower);
+            return result;
+        }
+
+        function renderSpectrum() {
+            const svg = document.getElementById('spectrum-svg');
+            if (!svg) return;
+
+            const validObs = observations.filter(o => o.timestamp !== null && o.moons.length > 0);
+            if (validObs.length < 2) {
+                svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#888" font-size="13">${__("spectrumNoData")}</text>`;
+                return;
+            }
+
+            const sortedObs = [...validObs].sort((a, b) => a.timestamp - b.timestamp);
+            const baseTime = sortedObs[0].timestamp;
+            const points = [];
+            sortedObs.forEach(obs => {
+                const tDays = (obs.timestamp - baseTime) / (1000 * 60 * 60 * 24);
+                const axisAngle = getAxisAngle(obs);
+                obs.moons.forEach(m => {
+                    const rValue = getMoonDistRp(obs, m, axisAngle);
+                    points.push({ t: tDays, r: rValue });
+                });
+            });
+
+            const spectrum = computePeriodogram(points);
+            if (spectrum.length < 2) {
+                svg.innerHTML = `<text x="50%" y="50%" text-anchor="middle" fill="#888" font-size="13">${__("spectrumFail")}</text>`;
+                return;
+            }
+
+            const w = svg.clientWidth || 600;
+            const h = svg.clientHeight || 240;
+            const padL = 55, padR = 20, padT = 25, padB = 40;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+            const maxPeriod = spectrum[spectrum.length - 1].period;
+
+            let html = '';
+            html += `<rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="#fafafa" rx="4"/>`;
+
+            for (let i = 0; i <= 5; i++) {
+                const x = padL + plotW * i / 5;
+                html += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + plotH}" stroke="#e5e7eb" stroke-width="1"/>`;
+                html += `<text x="${x}" y="${padT + plotH + 14}" text-anchor="middle" fill="#888" font-size="10">${(maxPeriod * i / 5).toFixed(1)}</text>`;
+            }
+            for (let i = 0; i <= 4; i++) {
+                const y = padT + plotH - plotH * i / 4;
+                html += `<line x1="${padL}" y1="${y}" x2="${padL + plotW}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+                html += `<text x="${padL - 5}" y="${y + 3}" text-anchor="end" fill="#888" font-size="10">${(i / 4).toFixed(1)}</text>`;
+            }
+
+            const curveColors = ['var(--moon1)', 'var(--moon2)', 'var(--moon3)', 'var(--moon4)'];
+            const curveLabels = ['S1', 'S2', 'S3', 'S4'];
+            curves.forEach((curve, idx) => {
+                if (!curve.enabled || curve.T <= 0) return;
+                const x = padL + (curve.T / maxPeriod) * plotW;
+                html += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${padT + plotH}" stroke="${curveColors[idx]}" stroke-width="2.5" stroke-dasharray="6,3" opacity="0.9"/>`;
+                html += `<text x="${x}" y="${padT - 7}" text-anchor="middle" fill="${curveColors[idx]}" font-size="10" font-weight="bold">${curveLabels[idx]}</text>`;
+            });
+
+            let dArea = `M ${padL} ${padT + plotH}`;
+            for (let i = 0; i < spectrum.length; i++) {
+                const x = padL + (spectrum[i].period / maxPeriod) * plotW;
+                const y = padT + plotH - Math.max(0, spectrum[i].power) * plotH;
+                dArea += ` L ${x} ${y}`;
+            }
+            dArea += ` L ${padL + plotW} ${padT + plotH} Z`;
+            html += `<path d="${dArea}" fill="rgba(25, 118, 210, 0.15)" stroke="none"/>`;
+
+            let dLine = '';
+            for (let i = 0; i < spectrum.length; i++) {
+                const x = padL + (spectrum[i].period / maxPeriod) * plotW;
+                const y = padT + plotH - Math.max(0, spectrum[i].power) * plotH;
+                dLine += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+            }
+            html += `<path d="${dLine}" fill="none" stroke="#1976d2" stroke-width="2" opacity="0.7"/>`;
+
+            html += `<text x="${padL + plotW / 2}" y="${padT + plotH + 28}" text-anchor="middle" fill="#555" font-size="11">${__("specXLabel")}</text>`;
+            html += `<text x="16" y="${padT + plotH / 2}" text-anchor="middle" fill="#555" font-size="11" transform="rotate(-90, 16, ${padT + plotH / 2})">${__("specYLabel")}</text>`;
+
+            svg.innerHTML = html;
+        }
+
+        // ★ 更新計算表格：加入地球質量換算，並以上標格式顯示科學記號
+        function updateCalcTable() {
+            const tbody = document.getElementById('calc-tbody');
+            tbody.innerHTML = '';
+            
+            const rpKm = parseFloat(document.getElementById('input-primary-radius').value) || 71492;
+            const rpMeters = rpKm * 1000;
+
+            let totalMass = 0; let validCount = 0;
+            curves.forEach((curve, index) => {
+                if (!curve.enabled) return;
+                const a_m = curve.A * rpMeters; 
+                const T_s = curve.T * DAY_SECONDS;
+                let massStr = "---";
+                let mass = null;
+                if (curve.A > 0 && curve.T > 0) {
+                    mass = (4 * Math.pow(Math.PI, 2) * Math.pow(a_m, 3)) / (G_CONST * Math.pow(T_s, 2));
+                    const earthMasses = mass / EARTH_MASS;
+                    // ★ 科學記號上標格式
+                    massStr = __("massStr", formatSciNotation(mass), formatSciNotation(earthMasses));
+                    if (curve.useForAvg) { totalMass += mass; validCount++; }
+                }
+
+                const names = [__("curve1Name"), __("curve2Name"), __("curve3Name"), __("curve4Name")];
+                tbody.innerHTML += `
+                    <tr>
+                        <td><input type="checkbox" ${curve.useForAvg ? 'checked' : ''} onchange="toggleCalcAvg(${index}, this.checked)" title="${__("thAvgTitle")}"></td>
+                        <td style="color:${curve.color}; font-weight:bold;">${names[index]}</td>
+                        <td>${curve.A.toFixed(2)}</td><td>${curve.T.toFixed(2)}</td>
+                        <td style="font-size:1rem; color: ${curve.useForAvg ? '#111' : '#aaa'}; line-height:1.6;">${massStr}</td>
+                    </tr>
+                `;
+            });
+
+            const resultBox = document.getElementById('final-mass-result');
+            if (validCount > 0) {
+                const avgMass = totalMass / validCount;
+                const avgEarthMasses = avgMass / EARTH_MASS;
+                resultBox.innerHTML = `
+                    <span>${__("resultLabel")}</span>
+                    <span style="font-size:1.6rem; color:#d32f2f;">${formatSciNotation(avgMass)} kg</span>
+                    <span style="font-size:1.1rem; color:#555;">≈ ${formatSciNotation(avgEarthMasses)} ${__("earthMass")}</span>
+                    <span style="font-size:0.9rem; color:#666; font-weight:normal;">${__("resultBasedOn", rpKm)}</span>
+                `;
+            } else {
+                resultBox.innerHTML = `<span style="color:#666; font-size:1rem;">${__("resultEnable")}</span>`;
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (document.getElementById('view-analysis').classList.contains('active')) {
+                renderGraph();
+            }
+        });
+
+        // Initial language application (default: English)
+        applyLanguage();
+
+    </script>
+</body>
+</html>
